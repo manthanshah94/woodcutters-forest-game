@@ -1,0 +1,2413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>The Woodcutter's Forest</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sky: #87ceeb;
+  --ground: #5a8a3c;
+  --ground-dark: #3d6128;
+  --path: #c8a46e;
+  --path-dark: #a0784a;
+  --tree-trunk: #7c4820;
+  --tree-leaf: #2d7a2d;
+  --tree-leaf-dark: #1a5c1a;
+  --wood-color: #c8874a;
+  --charcoal: #3a3a3a;
+  --fire: #f5832a;
+  --fire2: #f5c842;
+  --hud-bg: #1a0e05;
+  --hud-border: #c8874a;
+  --gold: #f5c842;
+  --red: #d82020;
+  --white: #f5f0e8;
+  --black: #0a0a0a;
+  --water: #4a90d9;
+  --skin: #f0c080;
+  --shirt: #4a6fa5;
+  --pants: #6b4a2a;
+  --parchment: #f5ead0;
+  --ink: #2b1800;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; image-rendering: pixelated; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+
+html, body { height: 100%; background: #0a0a0a; overflow: hidden; font-family: 'Press Start 2P', monospace; }
+
+/* ─── WRAPPER ─── */
+#app { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #0a0a0a; }
+
+#gameWrap {
+  position: relative;
+  width: min(480px, 100vw);
+  height: min(720px, 100vh);
+  overflow: hidden;
+  background: var(--sky);
+}
+
+/* ─── CANVAS ─── */
+#gameCanvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+/* ─── HUD ─── */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: linear-gradient(180deg, #2a1608 0%, #1a0e05 60%, #120a03 100%);
+  border-bottom: 2px solid #c8874a;
+  box-shadow: 0 2px 0 #6a3a10, 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,180,80,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  z-index: 50;
+  gap: 4px;
+}
+.hud-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 60px;
+  padding: 4px 6px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(200,135,74,0.3);
+}
+.hud-label {
+  font-size: 5px;
+  color: #c8874a;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.hud-val { font-size: 11px; color: var(--white); }
+.hud-val.gold { color: var(--gold); }
+.hud-val.red { color: var(--red); animation: timerPulse 0.6s steps(2) infinite; }
+.hud-divider {
+  width: 1px; height: 36px;
+  background: linear-gradient(180deg, transparent, #c8874a55, transparent);
+}
+@keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+#inventoryBar {
+  display: flex; gap: 3px; align-items: center;
+}
+.inv-pip {
+  width: 10px; height: 10px;
+  background: #333;
+  border: 1px solid #555;
+}
+.inv-pip.log { background: var(--wood-color); border-color: var(--tree-trunk); }
+.inv-pip.charcoal { background: var(--charcoal); border-color: #666; }
+
+/* ─── STATION PANELS ─── */
+.station-panel {
+  position: absolute;
+  background: var(--hud-bg);
+  border: 2px solid var(--hud-border);
+  padding: 4px 6px;
+  font-size: 7px;
+  color: var(--white);
+  pointer-events: none;
+  z-index: 30;
+}
+.station-panel .s-name { color: var(--gold); margin-bottom: 2px; font-size: 6px; letter-spacing: 1px; }
+.progress-bar {
+  width: 60px; height: 6px;
+  background: #333;
+  border: 1px solid #666;
+  margin-top: 2px;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--fire);
+  transition: width 0.1s linear;
+}
+.progress-fill.chop { background: var(--wood-color); }
+.progress-fill.burn { background: var(--fire); }
+
+/* ─── FLOATING TEXT ─── */
+.float-text {
+  position: absolute;
+  font-size: 10px;
+  color: var(--gold);
+  -webkit-text-stroke: 1px var(--black);
+  pointer-events: none;
+  z-index: 60;
+  animation: floatUp 1.2s ease-out forwards;
+}
+.float-text.sheikh { color: #ffd700; font-size: 13px; }
+.float-text.miss { color: var(--red); }
+@keyframes floatUp {
+  0% { opacity:1; transform: translateY(0); }
+  100% { opacity:0; transform: translateY(-50px); }
+}
+
+/* ─── SPEECH BUBBLE ─── */
+.bubble {
+  position: absolute;
+  background: var(--white);
+  border: 2px solid var(--black);
+  padding: 4px 6px;
+  font-size: 7px;
+  color: var(--black);
+  pointer-events: none;
+  z-index: 55;
+  max-width: 120px;
+  line-height: 1.5;
+}
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px; left: 10px;
+  border: 4px solid transparent;
+  border-top-color: var(--black);
+}
+
+/* ─── INTRO OVERLAY ─── */
+#intro {
+  position: absolute;
+  inset: 0;
+  background: var(--parchment);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.intro-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1.5rem 1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.intro-panel.active { opacity: 1; pointer-events: auto; }
+
+.intro-scene {
+  width: 200px; height: 140px;
+  position: relative;
+  margin-bottom: 1rem;
+  border: 3px solid var(--ink);
+  background: #87ceeb;
+  flex-shrink: 0;
+}
+
+.intro-text {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1.5;
+  max-width: 340px;
+  flex-shrink: 0;
+}
+.intro-text em { color: var(--ember, #b54a1f); font-style: normal; }
+
+.intro-tap {
+  font-size: 8px;
+  color: #888;
+  margin-top: 1rem;
+  animation: blink 1s steps(2) infinite;
+  flex-shrink: 0;
+}
+@keyframes blink { 0%,50%{opacity:1} 50.01%,100%{opacity:.3} }
+
+/* ─── END SCREEN ─── */
+#endScreen {
+  position: absolute;
+  inset: 0;
+  background: var(--hud-bg);
+  z-index: 200;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+  gap: 0.8rem;
+}
+#endScreen.active { display: flex; }
+
+.end-title { font-size: 18px; color: var(--gold); text-shadow: 2px 2px 0 var(--red); letter-spacing: 2px; }
+.end-score { font-size: 36px; color: var(--gold); text-shadow: 3px 3px 0 #8a6000; }
+.end-table {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--hud-border);
+  padding: 1rem;
+  width: 100%;
+  max-width: 340px;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  color: var(--white);
+}
+.end-table .row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dotted #444; }
+.end-table .row:last-child { border-bottom: none; }
+.end-table strong { color: var(--gold); }
+
+/* Leaderboard */
+.leaderboard {
+  width: 100%; max-width: 340px;
+}
+.lb-title { font-size: 9px; color: var(--hud-border); letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
+.lb-entry {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid #333;
+  margin-bottom: 3px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+}
+.lb-entry.you { border-color: var(--gold); background: rgba(245,200,66,0.08); }
+.lb-entry .lb-rank { color: #888; width: 20px; font-size: 14px; }
+.lb-entry .lb-name { flex: 1; color: var(--white); padding: 0 8px; }
+.lb-entry .lb-score { color: var(--gold); }
+
+.name-row { display: flex; gap: 6px; width: 100%; max-width: 340px; }
+.name-input {
+  flex: 1; padding: 8px;
+  background: var(--black);
+  border: 2px solid var(--hud-border);
+  color: var(--white);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.name-input:focus { outline: none; border-color: var(--gold); }
+.submit-btn {
+  padding: 8px 12px;
+  background: var(--gold);
+  border: 2px solid #8a6000;
+  color: var(--black);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.submit-btn:active { background: var(--hud-border); }
+
+.play-again {
+  padding: 10px 20px;
+  background: transparent;
+  border: 2px solid var(--white);
+  color: var(--white);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  margin-top: 0.5rem;
+}
+.play-again:active { background: var(--white); color: var(--black); }
+
+/* Tap hint */
+#tapHint {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: rgba(255,255,255,0.5);
+  pointer-events: none;
+  z-index: 20;
+  white-space: nowrap;
+}
+
+/* Sheikh alert */
+#sheikhAlert {
+  position: absolute;
+  top: 60px; left: 50%;
+  transform: translateX(-50%);
+  background: #8a6000;
+  border: 2px solid var(--gold);
+  padding: 5px 10px;
+  font-size: 8px;
+  color: var(--gold);
+  z-index: 55;
+  display: none;
+  white-space: nowrap;
+  animation: sheikhPop 0.4s cubic-bezier(.34,1.56,.64,1);
+  letter-spacing: 1px;
+}
+@keyframes sheikhPop { from{transform:translateX(-50%) scale(0.5)} to{transform:translateX(-50%) scale(1)} }
+/* ─── TEACHING SCREEN ─── */
+#teachingScreen {
+  position: absolute;
+  inset: 0;
+  background: #f5ead0;
+  z-index: 210;
+  display: none;
+  overflow-y: auto;
+  padding: 1.5rem 1.2rem 2rem;
+}
+#teachingScreen.active { display: block; animation: fadeIn 0.8s ease-out; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+.teaching-inner { max-width: 340px; margin: 0 auto; }
+
+.teaching-ornament {
+  text-align: center;
+  font-size: 1.4rem;
+  color: #b54a1f;
+  margin-bottom: 0.6rem;
+  font-family: Georgia, serif;
+}
+.teaching-eyebrow {
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  letter-spacing: 2px;
+  color: #8a6420;
+  text-transform: uppercase;
+  margin-bottom: 0.8rem;
+}
+.teaching-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: normal;
+  font-style: italic;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  color: #b54a1f;
+  text-align: center;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid #c8a46e;
+}
+.teaching-body {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: #2b1800;
+  margin-bottom: 1rem;
+}
+.teaching-body.drop::first-letter {
+  float: left;
+  font-size: 2.8rem;
+  line-height: 0.85;
+  padding-right: 0.3rem;
+  padding-top: 0.15rem;
+  color: #b54a1f;
+  font-style: italic;
+}
+.teaching-body em {
+  font-style: italic;
+  color: #b54a1f;
+}
+.teaching-question {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: #2b1800;
+  text-align: center;
+  padding: 1rem;
+  background: rgba(181,74,31,0.07);
+  border-left: 3px solid #b54a1f;
+  margin-top: 1.2rem;
+}
+.btn-teaching {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  padding: 10px;
+  margin: 0.8rem auto 0.4rem;
+  background: #b54a1f;
+  border: none;
+  color: #f5ead0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+.btn-teaching:active { background: #8a3010; }
+/* Station tap highlight */
+.tap-ring {
+  position: absolute;
+  border: 3px solid #f5c842;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 40;
+  animation: tapRingPop 0.5s ease-out forwards;
+}
+@keyframes tapRingPop {
+  0% { opacity: 1; transform: scale(0.85); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="gameWrap">
+  <canvas id="gameCanvas"></canvas>
+  <div id="hud">
+    <div class="hud-cell">
+      <div class="hud-label">WEALTH</div>
+      <div class="hud-val gold" id="hudWealth">0</div>
+    </div>
+    <div class="hud-cell" style="min-width:110px;">
+      <div class="hud-label">CARRYING</div>
+      <div style="display:flex;gap:5px;align-items:center;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+          <div style="font-size:5px;color:#c8874a;letter-spacing:0;">RAW</div>
+          <div class="hud-val" id="hudRaw" style="font-size:11px;color:#c8874a;">0</div>
+        </div>
+        <div style="color:#333;font-size:8px;">|</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+          <div style="font-size:5px;color:#e0c080;letter-spacing:0;">CUT</div>
+          <div class="hud-val" id="hudCut" style="font-size:11px;color:#e0c080;">0</div>
+        </div>
+        <div style="color:#333;font-size:8px;">|</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+          <div style="font-size:5px;color:#888;letter-spacing:0;">CHAR</div>
+          <div class="hud-val" id="hudChar" style="font-size:11px;color:#aaa;">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="hud-cell">
+      <div class="hud-label">MYSTERY</div>
+      <div class="hud-val" id="hudSheikh" style="color:#f5c842;">?</div>
+    </div>
+    <div class="hud-cell">
+      <div class="hud-label">TIME</div>
+      <div class="hud-val" id="hudTime">3:00</div>
+    </div>
+  </div>
+
+  <div id="sheikhAlert">❓ MYSTERY CUSTOMER ARRIVING!</div>
+  <div id="tapHint">TAP a station to direct your worker!</div>
+
+  <!-- INTRO -->
+  <div id="intro">
+    <!-- Panel 0: Title -->
+    <div class="intro-panel active" id="ip0">
+      <canvas class="intro-scene" id="is0" width="200" height="140"></canvas>
+      <div class="intro-text">THE<br>WOODCUTTER'S<br>FOREST</div>
+      <div class="intro-text" style="font-size:14px; margin-top:0.5rem; color:#8a6000;">A game of choices</div>
+      <div class="intro-tap">▼ TAP TO BEGIN ▼</div>
+    </div>
+    <!-- Panel 1: Forest meeting -->
+    <div class="intro-panel" id="ip1">
+      <canvas class="intro-scene" id="is1" width="200" height="140"></canvas>
+      <div class="intro-text">A poor woodcutter lived alone,<br>cutting wood to survive.</div>
+      <div class="intro-tap">▼ TAP TO CONTINUE ▼</div>
+    </div>
+    <!-- Panel 2: King -->
+    <div class="intro-panel" id="ip2">
+      <canvas class="intro-scene" id="is2" width="200" height="140"></canvas>
+      <div class="intro-text">One day the <em>King</em> was lost<br>in the forest. The woodcutter<br>showed him the way home.</div>
+      <div class="intro-tap">▼ TAP TO CONTINUE ▼</div>
+    </div>
+    <!-- Panel 3: Gift -->
+    <div class="intro-panel" id="ip3">
+      <canvas class="intro-scene" id="is3" width="200" height="140"></canvas>
+      <div class="intro-text">As a gift, the King granted him<br>a <em>forest full of precious wood.</em><br>"Make it your business," he said.</div>
+      <div class="intro-tap">▼ TAP TO CONTINUE ▼</div>
+    </div>
+    <!-- Panel 4: Instructions -->
+    <div class="intro-panel" id="ip4">
+      <div class="intro-text" style="font-size:15px; line-height:1.8;">
+        🌲 Chop trees in the forest<br>
+        🪓 Drop logs at the chop station<br>
+        🔥 Burn for charcoal to sell<br>
+        👤 Sell to customers at market<br>
+        ⚠️ Watch out for a <em>Mystery Customer!</em><br><br>
+        <span style="font-size:12px;">You have <em>3 minutes.</em><br>Earn as much wealth as you can.</span>
+      </div>
+      <div class="intro-tap">▼ TAP TO PLAY ▼</div>
+    </div>
+  </div>
+
+  <!-- TUTORIAL OVERLAY -->
+  <div id="tutorial" style="display:none; position:absolute; inset:0; background:transparent; z-index:150; pointer-events:none;">
+    <div id="tutorialContent" style="position:absolute; inset:0;"></div>
+    <div style="position:absolute; bottom:22%; left:50%; transform:translateX(-50%); text-align:center; pointer-events:none;">
+      <div id="tutorialMsg" style="font-family:'VT323',monospace; font-size:22px; color:#fff; line-height:1.5; background:rgba(10,10,10,0.88); padding:8px 14px; border:2px solid #f5c842; max-width:280px; white-space:pre-line; text-shadow:1px 1px 0 #000;"></div>
+      <div style="margin-top:8px; font-size:8px; color:#f5c842; font-family:'Press Start 2P',monospace;" id="tutorialTimer"></div>
+    </div>
+    <button id="skipTutorial" style="
+      position:absolute; bottom:8%; left:50%; transform:translateX(-50%);
+      background:rgba(10,10,10,0.75); border:1px solid #666; color:#aaa;
+      font-family:'Press Start 2P',monospace; font-size:7px; letter-spacing:2px;
+      padding:7px 16px; cursor:pointer; pointer-events:auto;
+    ">SKIP ▶▶</button>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="endScreen">
+    <div class="end-title">TIME'S UP!</div>
+    <div class="end-score" id="endScore">0</div>
+    <div class="end-table">
+      <div class="row"><span>Logs chopped</span><strong id="esChops">0</strong></div>
+      <div class="row"><span>Charcoal sold</span><strong id="esCharcoal">0</strong></div>
+      <div class="row"><span>Mystery customer served</span><strong id="esSheikh">0</strong></div>
+      <div class="row"><span>Mystery customer missed</span><strong id="esMissed">0</strong></div>
+    </div>
+    <div class="name-row">
+      <input class="name-input" id="nameInput" placeholder="YOUR NAME" maxlength="10" autocomplete="off">
+      <button class="submit-btn" id="submitScore">SAVE</button>
+    </div>
+    <div class="leaderboard" id="leaderboard">
+      <div class="lb-title">SABHA LEADERBOARD</div>
+      <div id="lbEntries"></div>
+    </div>
+    <button class="btn-teaching" id="showTeaching">THE REAL LESSON ▶</button>
+    <button class="play-again" id="playAgain">PLAY AGAIN</button>
+  </div>
+
+  <!-- TEACHING SCREEN -->
+  <div id="teachingScreen">
+    <div class="teaching-inner">
+      <div class="teaching-ornament">❦</div>
+      <div class="teaching-eyebrow">Vachanamrut · Gadhada Pratham 18</div>
+      <h2 class="teaching-title">The Sheikh knew.<br>The woodcutter didn't.</h2>
+      <p class="teaching-body drop">Every log you chopped was sandalwood — a forest gifted by the King, precious beyond what the woodcutter ever imagined. He burned it to charcoal and sold it cheap. A whole year passed. He stayed poor.</p>
+      <p class="teaching-body">The Sheikh appeared and offered triple the price — not for charcoal, but for the wood as it was. Unburned. Unaltered. Still carrying its true worth.</p>
+      <p class="teaching-body">Swamiji's message in Pratham 18 is this: the <em>manushya deh</em> — this human life — is that forest. Infinite potential lives inside it. And yet, minute by minute, we burn it into charcoal: distraction, comfort, small pursuits, the noise of days that pass without recognition.</p>
+      <div class="teaching-question">
+        What are you holding that you haven't recognized yet?
+      </div>
+      <div class="teaching-ornament" style="margin-top:1.5rem;">· · ·</div>
+      <button class="play-again" id="playAgain2" style="margin-top:1rem;">PLAY AGAIN</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function() {
+'use strict';
+
+// ─── CANVAS SETUP ───
+const wrap = document.getElementById('gameWrap');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); });
+
+const W = () => canvas.width;
+const H = () => canvas.height;
+
+// ─── PIXEL SCALE ───
+// All game coords are in a 160×240 internal grid, scaled up
+const GRID_W = 160, GRID_H = 240;
+function sx(x) { return (x / GRID_W) * W(); }
+function sy(y) { return (y / GRID_H) * H(); }
+function sw(w) { return (w / GRID_W) * W(); }
+function sh(h) { return (h / GRID_H) * H(); }
+
+// ─── COLOR PALETTE ───
+const C = {
+  sky: '#87ceeb', skyHorizon: '#c8e8f8',
+  ground: '#5a8a3c', groundDark: '#3d6128',
+  path: '#c8a46e', pathDark: '#a0784a',
+  treeTrunk: '#7c4820', treeLeaf: '#2d7a2d', treeLeafDark: '#1a5c1a', treeLeafLight: '#3aaa3a',
+  stump: '#9a6030',
+  wood: '#c8874a', woodDark: '#8a5a28',
+  charcoal: '#3a3a3a', charcoalLight: '#5a5a5a',
+  fire: '#f5832a', fire2: '#f5c842', fireGlow: '#ff4400',
+  skin: '#f0c080', skinDark: '#c89050',
+  shirt: '#4a6fa5', shirtDark: '#2a4f85',
+  pants: '#6b4a2a', pantsDark: '#4a2a10',
+  hair: '#2b1800',
+  kingRobe: '#8b1a1a', kingRobeLight: '#cc2222',
+  kingGold: '#f5c842',
+  sheikhRobe: '#d4af37', sheikhDark: '#8a7020',
+  customer: '#5a7a5a',
+  black: '#0a0a0a', white: '#f5f0e8',
+  gold: '#f5c842', goldDark: '#8a6000',
+  hud: '#1a0e05', hudBorder: '#c8874a',
+  water: '#4a90d9',
+  buildingWall: '#d4b896', buildingRoof: '#8b4513',
+  buildingDoor: '#5a3010',
+  smoke: 'rgba(80,80,80,0.5)',
+  stationGlow: 'rgba(245,200,66,0.2)',
+};
+
+// ─── GAME STATE ───
+const GS = {
+  running: false,
+  timeLeft: 180,
+  wealth: 0,
+  sheikhsServed: 0,
+  sheikhsMissed: 0,
+  charcoalSold: 0,
+  logsChopped: 0,
+  lastTime: 0,
+  tickAcc: 0,
+};
+
+// ─── WORKER ───
+const worker = {
+  x: 80, y: 160,
+  tx: 80, ty: 160,
+  speed: 28,
+  moving: false,
+  facing: 1,
+  animFrame: 0,
+  animTimer: 0,
+  inventory: [],
+  maxCarry: 10,
+  task: null,
+  taskTimer: 0,
+  taskDuration: 0,
+  destStation: null,
+};
+
+// ─── STATIONS ───
+// All positions in 160×240 grid
+const stations = {
+  forest: {
+    id: 'forest', label: '🌲 FOREST', x: 18, y: 80,
+    w: 36, h: 50,
+    action: 'chop_log',
+    duration: 1.8,
+    progress: 0,
+    working: false,
+    produce: 'log',
+    maxQueue: 99,
+    queue: 0,
+    color: C.treeLeaf,
+  },
+  chopStation: {
+    id: 'chopStation', label: '🪓 CUT', x: 68, y: 110,
+    w: 28, h: 28,
+    action: 'process_log',
+    duration: 2.2,
+    progress: 0,
+    working: false,
+    input: 'log',
+    produce: 'chopped',
+    queue: 0,
+    maxQueue: 6,
+    color: C.wood,
+  },
+  burnStation: {
+    id: 'burnStation', label: '🔥 BURN', x: 110, y: 110,
+    w: 28, h: 28,
+    action: 'burn_log',
+    duration: 2.2,
+    progress: 0,
+    working: false,
+    input: 'chopped',
+    produce: 'charcoal',
+    queue: 0,
+    charcoalReady: 0,
+    maxQueue: 6,
+    color: C.fire,
+  },
+  market: {
+    id: 'market', label: '🏪 MARKET', x: 32, y: 168,
+    w: 28, h: 28,
+    action: 'sell_charcoal',
+    duration: 0,
+    progress: 0,
+    working: false,
+    input: 'charcoal',
+    sellPrice: 10,
+    queue: 0,
+    readyToSell: 0,
+    ordersWaiting: 0, // number of customers currently waiting for their order
+    maxQueue: 5,
+    color: C.customer,
+  },
+  sheikhSpot: {
+    id: 'sheikhSpot', label: '👑 SHEIKH', x: 84, y: 168,
+    w: 28, h: 28,
+    action: 'sell_raw',
+    duration: 0,
+    progress: 0,
+    working: false,
+    input: 'chopped',
+    sellPrice: 30,
+    queue: 0,
+    active: false,
+    leaving: false,
+    leaveTimer: 0,
+    timer: 0,
+    timerMax: 18,
+    color: C.sheikhRobe,
+  },
+};
+
+// ─── SHEIKH SPAWNING — guaranteed at least 2 ───
+// Announce 15s before each spawn so player can prepare
+const sheikhSchedule = [150, 100, 45];
+const sheikhWarnOffset = 15; // warn this many seconds before spawn
+let sheikhSpawnIdx = 0;
+
+// Sheikh anticipation state
+const sheikhAnticipation = { active: false, timer: 0, duration: sheikhWarnOffset };
+
+// Animated birds for sky
+const birds = Array.from({ length: 4 }, (_, i) => ({
+  x: Math.random() * 160,
+  y: 8 + Math.random() * 20,
+  speed: 6 + Math.random() * 4,
+  wingPhase: Math.random() * Math.PI * 2,
+  size: 0.8 + Math.random() * 0.4,
+}));
+
+// ─── NPC CUSTOMER POOL ───
+// Live customers that arrive, wait, buy, and leave
+const npcPool = [];
+const NPC_COLORS = [
+  { shirt: '#5a7a9a', pants: '#3a3a5a', skin: '#f0c080', hair: '#2b1800' },
+  { shirt: '#7a5a3a', pants: '#3a5a3a', skin: '#c89060', hair: '#8b4513' },
+  { shirt: '#9a5a5a', pants: '#4a3a2a', skin: '#e0a070', hair: '#1a1a1a' },
+  { shirt: '#4a8a5a', pants: '#2a4a3a', skin: '#f5c090', hair: '#2b1800' },
+  { shirt: '#7a4a8a', pants: '#3a2a4a', skin: '#d0a070', hair: '#1a1a1a' },
+];
+let npcSpawnTimer = 0;
+const NPC_SPAWN_INTERVAL = 4; // new customer every 4s
+const MAX_MARKET_NPCS = 5;
+
+function updateNPCs(dt) {
+  const ms = stations.market;
+
+  // Spawn new customers if under the cap
+  npcSpawnTimer += dt;
+  if (npcSpawnTimer >= NPC_SPAWN_INTERVAL && npcPool.length < MAX_MARKET_NPCS) {
+    npcSpawnTimer = 0;
+    const colorIdx = Math.floor(Math.random() * NPC_COLORS.length);
+    const slot = npcPool.length;
+    npcPool.push({
+      colorIdx,
+      state: 'walking',
+      x: ms.x - 22,
+      targetX: ms.x + 2 + slot * 9,
+      waitTimer: 0,
+      buyTimer: 0,
+      ordered: false,  // has this NPC placed their order yet?
+      bought: false,
+    });
+  }
+
+  // Update each NPC
+  for (let i = npcPool.length - 1; i >= 0; i--) {
+    const npc = npcPool[i];
+
+    if (npc.state === 'walking') {
+      npc.x += 22 * dt;
+      if (npc.x >= npc.targetX) {
+        npc.x = npc.targetX;
+        npc.state = 'waiting';
+        // Place order as soon as they arrive
+        if (!npc.ordered) {
+          npc.ordered = true;
+          ms.ordersWaiting++;
+        }
+      }
+
+    } else if (npc.state === 'waiting') {
+      // Check if readyToSell can fill this order
+      if (ms.readyToSell > 0 && ms.ordersWaiting > 0) {
+        ms.readyToSell--;
+        ms.ordersWaiting--;
+        npc.state = 'buying';
+        npc.buyTimer = 0;
+        GS.wealth += ms.sellPrice;
+        GS.charcoalSold++;
+        addFloater('+' + ms.sellPrice, npc.x + 3, ms.y + ms.h, '');
+      }
+      // No timeout — customer waits until served
+
+    } else if (npc.state === 'buying') {
+      // Brief happy pause, then leave
+      npc.buyTimer += dt;
+      if (npc.buyTimer >= 0.7) {
+        npc.bought = true;
+        npc.state = 'leaving';
+      }
+
+    } else if (npc.state === 'leaving') {
+      npc.x += 30 * dt;
+      if (npc.x > ms.x + 65) {
+        // If they never got served and are somehow leaving, refund the order count
+        if (npc.ordered && !npc.bought) ms.ordersWaiting = Math.max(0, ms.ordersWaiting - 1);
+        npcPool.splice(i, 1);
+        // Repack slot positions for remaining waiting NPCs
+        let slot = 0;
+        npcPool.forEach(n => {
+          if (n.state === 'waiting' || n.state === 'walking') {
+            n.targetX = ms.x + 2 + slot * 9;
+            slot++;
+          }
+        });
+      }
+    }
+  }
+}
+
+// ─── SHEIKH SPEECH BUBBLE STATE ───
+let sheikhBubble = { active: false, timer: 0, duration: 5 };
+
+// ─── PARTICLES / FLOATERS ───
+const floaters = [];
+function addFloater(text, gx, gy, cls) {
+  floaters.push({ text, x: sx(gx), y: sy(gy), cls: cls || '', life: 1.2, age: 0 });
+}
+
+// ─── INTRO LOGIC ───
+let introPanel = 0;
+const totalPanels = 5;
+const introEl = document.getElementById('intro');
+
+// Draw intro scenes on their canvases
+function drawIntroScenes() {
+  drawIntroScene0();
+  drawIntroScene1();
+  drawIntroScene2();
+  drawIntroScene3();
+}
+
+function pixelRect(ctx, x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, h);
+}
+
+function drawIntroScene0() {
+  const c = document.getElementById('is0');
+  const g = c.getContext('2d');
+  g.fillStyle = '#1a0e05'; g.fillRect(0,0,200,140);
+  // Stars
+  g.fillStyle = '#f5f0e8';
+  [[10,10],[30,25],[60,8],[90,20],[130,12],[160,30],[180,8],[50,40],[110,35],[170,50]].forEach(([x,y])=>{g.fillRect(x,y,2,2);});
+  // Big tree silhouette
+  g.fillStyle = '#1a4010'; g.fillRect(80,40,40,60); g.fillRect(70,60,60,40); g.fillRect(60,80,80,30);
+  g.fillStyle = '#2b1800'; g.fillRect(95,100,10,40);
+  // Title text via pixels (skip, font handles it)
+  g.fillStyle = C.gold; g.fillRect(0,135,200,5);
+}
+
+function drawIntroScene1(t) {
+  const c = document.getElementById('is1');
+  const g = c.getContext('2d');
+  // Sky
+  g.fillStyle = C.sky; g.fillRect(0,0,200,80);
+  g.fillStyle = C.ground; g.fillRect(0,80,200,60);
+  // Trees
+  [[10,30],[40,20],[80,35],[130,25],[160,20]].forEach(([x,y])=>{
+    g.fillStyle=C.treeTrunk; g.fillRect(x+8,y+30,4,20);
+    g.fillStyle=C.treeLeaf; g.fillRect(x,y+10,20,24); g.fillRect(x+4,y,12,14);
+  });
+  // Path
+  g.fillStyle=C.path; g.fillRect(85,80,30,60);
+  // Woodcutter
+  drawMiniChar(g, 90, 90, false);
+  // Hut
+  g.fillStyle=C.buildingWall; g.fillRect(148,64,40,36);
+  g.fillStyle=C.buildingRoof; g.fillRect(144,56,48,12);
+  g.fillStyle=C.buildingDoor; g.fillRect(160,78,10,22);
+}
+
+function drawIntroScene2() {
+  const c = document.getElementById('is2');
+  const g = c.getContext('2d');
+  g.fillStyle=C.sky; g.fillRect(0,0,200,80);
+  g.fillStyle=C.ground; g.fillRect(0,80,200,60);
+  // Forest path
+  g.fillStyle=C.path; g.fillRect(60,80,80,60);
+  [[10,30],[30,20],[150,25],[170,30]].forEach(([x,y])=>{
+    g.fillStyle=C.treeTrunk; g.fillRect(x+8,y+30,4,20);
+    g.fillStyle=C.treeLeaf; g.fillRect(x,y+10,20,24); g.fillRect(x+4,y,12,14);
+  });
+  // King (right, fancy)
+  drawMiniKing(g, 110, 88);
+  // Woodcutter (left, bowing)
+  drawMiniChar(g, 70, 90, true);
+}
+
+function drawIntroScene3() {
+  const c = document.getElementById('is3');
+  const g = c.getContext('2d');
+  g.fillStyle='#f8e8b0'; g.fillRect(0,0,200,140);
+  // Scroll/deed
+  g.fillStyle=C.parchment||'#f5ead0'; g.fillRect(40,30,120,80);
+  g.fillStyle=C.black; g.strokeStyle=C.black; g.lineWidth=2;
+  g.strokeRect(40,30,120,80);
+  g.fillStyle=C.gold; g.fillRect(44,34,112,6);
+  g.fillStyle='#8a5010'; g.font='bold 10px serif'; g.textAlign='center';
+  g.fillText('ROYAL DECREE',100,52);
+  g.fillStyle=C.ink||'#2b1800'; g.font='8px serif'; g.textAlign='center';
+  ['The great forest is', 'hereby granted to', 'the worthy woodcutter.', '— The King'].forEach((l,i)=>g.fillText(l,100,68+i*11));
+  // King's seal
+  g.fillStyle=C.gold; g.beginPath(); g.arc(100,128,10,0,Math.PI*2); g.fill();
+  g.fillStyle=C.black; g.font='10px serif'; g.textAlign='center'; g.fillText('★',100,132);
+}
+
+function drawMiniChar(g, x, y, bowing) {
+  // Body
+  g.fillStyle=C.pants; g.fillRect(x+2,y+14,4,8); g.fillRect(x+8,y+14,4,8);
+  g.fillStyle=C.shirt; g.fillRect(x+1,y+8,12,8);
+  g.fillStyle=C.skin; g.fillRect(x+4,y,6,8);
+  g.fillStyle=C.hair; g.fillRect(x+4,y,6,3);
+  if (bowing) { g.fillStyle=C.shirt; g.fillRect(x-2,y+4,6,4); } // arm forward
+  // Axe
+  g.fillStyle=C.treeTrunk; g.fillRect(x+13,y+6,2,10);
+  g.fillStyle=C.charcoal; g.fillRect(x+14,y+4,4,6);
+}
+
+function drawMiniKing(g, x, y) {
+  g.fillStyle=C.pants; g.fillRect(x+2,y+18,4,10); g.fillRect(x+8,y+18,4,10);
+  g.fillStyle=C.kingRobe; g.fillRect(x,y+8,14,12);
+  g.fillStyle=C.skin; g.fillRect(x+3,y+2,8,8);
+  g.fillStyle=C.kingGold; g.fillRect(x+2,y,10,4); // crown
+  g.fillStyle=C.kingGold; g.fillRect(x+1,y-4,3,6); g.fillRect(x+6,y-6,3,8); g.fillRect(x+11,y-4,3,6);
+}
+
+// Tap to advance intro
+introEl.addEventListener('click', () => {
+  introPanel++;
+  if (introPanel >= totalPanels) {
+    introEl.style.display = 'none';
+    startGame();
+  } else {
+    document.querySelectorAll('.intro-panel').forEach((p,i) => {
+      p.classList.toggle('active', i === introPanel);
+    });
+  }
+});
+
+// ─── TUTORIAL ───
+const TUTORIAL_STEPS = [
+  {
+    station: 'forest',
+    msg: '🌲 TAP THE FOREST\nto send your worker\nto chop trees.\nHe gets raw logs.',
+    duration: 2.5,
+  },
+  {
+    station: 'chopStation',
+    msg: '🪓 TAP CUT STATION\nto turn raw logs\ninto cut wood.',
+    duration: 2.5,
+  },
+  {
+    station: 'burnStation',
+    msg: '🔥 TAP BURN STATION\nto turn cut wood\ninto charcoal.\nThen pick it up!',
+    duration: 2.5,
+  },
+  {
+    station: 'market',
+    msg: '🏪 TAP THE MARKET\nto sell charcoal\nto customers.\n(1× price)',
+    duration: 2.5,
+  },
+  {
+    station: 'sheikhSpot',
+    msg: '❓ MYSTERY STATION\nSomeone special\nmay appear here...\nWatch out!',
+    duration: 2.5,
+  },
+];
+
+function runTutorial(onDone) {
+  const overlay = document.getElementById('tutorial');
+  const msgEl = document.getElementById('tutorialMsg');
+  const timerEl = document.getElementById('tutorialTimer');
+  const skipBtn = document.getElementById('skipTutorial');
+  overlay.style.display = 'block';
+
+  // Draw the game world once so stations are visible behind tutorial
+  render();
+
+  let stepIdx = 0;
+  let elapsed = 0;
+  let totalTime = TUTORIAL_STEPS.reduce((a, s) => a + s.duration, 0);
+  let timeLeft = totalTime;
+  let finished = false;
+
+  function finish() {
+    if (finished) return;
+    finished = true;
+    clearInterval(tutInterval);
+    overlay.style.display = 'none';
+    skipBtn.removeEventListener('click', skipHandler);
+    onDone();
+  }
+
+  function skipHandler() { finish(); }
+  skipBtn.addEventListener('click', skipHandler);
+
+  function showStep(idx) {
+    if (idx >= TUTORIAL_STEPS.length) {
+      overlay.style.display = 'none';
+      onDone();
+      return;
+    }
+    const step = TUTORIAL_STEPS[idx];
+    msgEl.textContent = step.msg;
+
+    // Highlight the station on canvas with an overlay rect
+    const content = document.getElementById('tutorialContent');
+    content.innerHTML = '';
+
+    // Dim everything, then bright spotlight on the station
+    const s = stations[step.station];
+    if (s) {
+      // Draw a bright border box over the station
+      const scaleX = W() / GRID_W, scaleY = H() / GRID_H;
+      const box = document.createElement('div');
+      box.style.cssText = `
+        position:absolute;
+        left:${s.x * scaleX - 3}px;
+        top:${s.y * scaleY - 3}px;
+        width:${s.w * scaleX + 6}px;
+        height:${s.h * scaleY + 6}px;
+        border:3px solid #f5c842;
+        box-shadow:0 0 0 2000px rgba(0,0,0,0.35), 0 0 20px #f5c842;
+        pointer-events:none;
+        animation: tutPulse 0.8s ease-in-out infinite alternate;
+      `;
+      content.appendChild(box);
+
+      // Arrow pointing to station
+      const arrow = document.createElement('div');
+      arrow.textContent = '▼';
+      arrow.style.cssText = `
+        position:absolute;
+        left:${(s.x + s.w/2) * scaleX - 8}px;
+        top:${(s.y - 16) * scaleY}px;
+        font-size:18px;
+        color:#f5c842;
+        text-shadow:0 0 8px #f5c842;
+        animation: tutBounce 0.5s ease-in-out infinite alternate;
+        pointer-events:none;
+      `;
+      content.appendChild(arrow);
+    }
+  }
+
+  // Add keyframes inline
+  if (!document.getElementById('tutStyles')) {
+    const style = document.createElement('style');
+    style.id = 'tutStyles';
+    style.textContent = `
+      @keyframes tutPulse { from{border-color:#f5c842} to{border-color:#f87858} }
+      @keyframes tutBounce { from{transform:translateY(0)} to{transform:translateY(-5px)} }
+    `;
+    document.head.appendChild(style);
+  }
+
+  showStep(0);
+
+  const tutInterval = setInterval(() => {
+    elapsed += 0.1;
+    timeLeft = Math.max(0, totalTime - elapsed);
+    timerEl.textContent = 'STARTING IN ' + Math.ceil(timeLeft) + 's';
+
+    const stepTime = TUTORIAL_STEPS.slice(0, stepIdx).reduce((a, s) => a + s.duration, 0);
+    if (elapsed >= stepTime + TUTORIAL_STEPS[stepIdx].duration) {
+      stepIdx++;
+      if (stepIdx >= TUTORIAL_STEPS.length) {
+        finish();
+        return;
+      }
+      showStep(stepIdx);
+    }
+  }, 100);
+}
+
+// ─── GAME START ───
+function startGame() {
+  GS.running = false; // not running during tutorial
+  GS.timeLeft = 180;
+  GS.wealth = 0;
+  GS.sheikhsServed = 0;
+  GS.sheikhsMissed = 0;
+  GS.charcoalSold = 0;
+  GS.logsChopped = 0;
+  GS.lastTime = performance.now();
+  GS.tickAcc = 0;
+
+  // Reset stations
+  Object.values(stations).forEach(s => {
+    s.queue = 0; s.progress = 0; s.working = false;
+    if (s.id === 'sheikhSpot') { s.active = false; s.timer = 0; s.leaving = false; s.leaveTimer = 0; }
+    if (s.id === 'burnStation') { s.charcoalReady = 0; s.pendingSwap = 0; }
+    if (s.id === 'market') { s.readyToSell = 0; s.ordersWaiting = 0; }
+  });
+  sheikhSpawnIdx = 0;
+  npcPool.length = 0;
+  npcSpawnTimer = 0;
+  sheikhBubble.active = false;
+  sheikhBubble.timer = 0;
+  sheikhAnticipation.active = false;
+  sheikhAnticipation.timer = 0;
+
+  // Hide teaching screen if visible
+  document.getElementById('teachingScreen').classList.remove('active');
+
+  // Reset worker
+  worker.x = 80; worker.y = 160;
+  worker.tx = 80; worker.ty = 160;
+  worker.moving = false;
+  worker.inventory = [];
+  worker.task = null;
+  worker.taskTimer = 0;
+  worker.destStation = null;
+
+  document.getElementById('tapHint').style.display = 'block';
+
+  // Draw initial frame so world is visible behind tutorial
+  resize();
+  render();
+
+  // Run tutorial, then start real game loop
+  runTutorial(() => {
+    GS.running = true;
+    GS.lastTime = performance.now();
+    requestAnimationFrame(loop);
+  });
+}
+
+// ─── MAIN LOOP ───
+function loop(now) {
+  if (!GS.running) return;
+  const dt = Math.min((now - GS.lastTime) / 1000, 0.1);
+  GS.lastTime = now;
+  GS.tickAcc += dt;
+
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+// ─── UPDATE ───
+function update(dt) {
+  // Timer
+  GS.timeLeft -= dt;
+  if (GS.timeLeft <= 0) { GS.timeLeft = 0; endGame(); return; }
+
+  // Sheikh anticipation — warn 15s before spawn
+  if (sheikhSpawnIdx < sheikhSchedule.length) {
+    const warnAt = sheikhSchedule[sheikhSpawnIdx] + sheikhWarnOffset;
+    if (!sheikhAnticipation.active && GS.timeLeft <= warnAt && GS.timeLeft > sheikhSchedule[sheikhSpawnIdx]) {
+      sheikhAnticipation.active = true;
+      sheikhAnticipation.timer = sheikhWarnOffset;
+      // Show subtle "someone is coming" alert
+      const alert = document.getElementById('sheikhAlert');
+      alert.textContent = '👤 Someone is approaching the mystery spot...';
+      alert.style.background = '#2a2200';
+      alert.style.borderColor = 'rgba(245,200,66,0.5)';
+      alert.style.color = 'rgba(245,200,66,0.8)';
+      alert.style.display = 'block';
+      setTimeout(() => { alert.style.display = 'none'; }, 3000);
+    }
+    if (GS.timeLeft <= sheikhSchedule[sheikhSpawnIdx]) {
+      sheikhAnticipation.active = false;
+      spawnSheikh();
+      sheikhSpawnIdx++;
+    }
+  }
+  if (sheikhAnticipation.active) {
+    sheikhAnticipation.timer -= dt;
+  }
+
+  // Sheikh timer countdown
+  const ss = stations.sheikhSpot;
+  if (ss.active) {
+    ss.timer -= dt;
+    if (ss.timer <= 0) {
+      ss.active = false; ss.timer = 0;
+      ss.leaving = true; ss.leaveTimer = 1.8; // play leave animation
+      GS.sheikhsMissed++;
+      addFloater('💸 MISSED!', stations.sheikhSpot.x + stations.sheikhSpot.w/2, stations.sheikhSpot.y - 4, 'miss');
+      document.getElementById('sheikhAlert').style.display = 'none';
+      sheikhBubble.active = false;
+    }
+  }
+  // Sheikh leave animation timer
+  if (ss.leaving) {
+    ss.leaveTimer -= dt;
+    if (ss.leaveTimer <= 0) { ss.leaving = false; ss.leaveTimer = 0; }
+  }
+
+  // Worker only moves when player taps — no autopilot
+
+  // Worker movement
+  if (worker.moving) {
+    const dx = worker.tx - worker.x;
+    const dy = worker.ty - worker.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 0.5) {
+      worker.x = worker.tx;
+      worker.y = worker.ty;
+      worker.moving = false;
+      if (worker.destStation) {
+        beginStationWork(worker.destStation);
+      }
+    } else {
+      const step = worker.speed * dt;
+      worker.x += (dx / dist) * step;
+      worker.y += (dy / dist) * step;
+      worker.facing = dx > 0 ? 1 : -1;
+      worker.animTimer += dt;
+      if (worker.animTimer > 0.18) { worker.animTimer = 0; worker.animFrame = (worker.animFrame + 1) % 4; }
+    }
+  }
+
+  // Station work progress
+  if (worker.task) {
+    worker.taskTimer += dt;
+    const prog = worker.taskTimer / worker.taskDuration;
+    const sid = worker.task.stationId;
+    if (stations[sid]) stations[sid].progress = Math.min(prog, 1);
+
+    if (worker.taskTimer >= worker.taskDuration) {
+      const prevTask = worker.task;
+      completeTask(prevTask);
+      // Only clear if completeTask didn't set a new task
+      if (worker.task === prevTask) {
+        worker.task = null;
+        worker.taskTimer = 0;
+      }
+    }
+  }
+
+  // Burn station — auto burns, swaps chopped→charcoal in worker inventory on completion
+  const bs = stations.burnStation;
+  if (!bs.working && bs.queue > 0) {
+    bs.working = true; bs.progress = 0;
+  }
+  if (bs.working) {
+    bs.progress += dt / bs.duration;
+    if (bs.progress >= 1) {
+      bs.progress = 0;
+      bs.queue--;
+      // Atomically swap one chopped → charcoal in worker inventory
+      if (bs.pendingSwap > 0) {
+        const idx = worker.inventory.indexOf('chopped');
+        if (idx >= 0) {
+          worker.inventory.splice(idx, 1);
+          worker.inventory.push('charcoal');
+        }
+        bs.pendingSwap--;
+      } else {
+        // Fallback: no pending swap tracked, just add to charcoalReady
+        bs.charcoalReady = Math.min(bs.charcoalReady + 1, 10);
+      }
+      if (bs.queue === 0) bs.working = false;
+      // Auto-pickup any charcoalReady if worker is standing here
+      if (!worker.moving && !worker.task && worker.destStation === 'burnStation'
+          && bs.charcoalReady > 0 && worker.inventory.length < worker.maxCarry) {
+        const canPickup = Math.min(bs.charcoalReady, worker.maxCarry - worker.inventory.length);
+        for (let pi = 0; pi < canPickup; pi++) {
+          worker.inventory.push('charcoal');
+          bs.charcoalReady--;
+        }
+      }
+    }
+  }
+
+  // Sheikh speech bubble — stays visible while sheikh is present
+  if (stations.sheikhSpot.active && !sheikhBubble.active) {
+    sheikhBubble.active = true; // keep re-activating if cleared
+  }
+  if (!stations.sheikhSpot.active) {
+    sheikhBubble.active = false;
+  }
+
+  // Live NPC customers
+  updateNPCs(dt);
+
+  // Update birds
+  birds.forEach(b => {
+    b.x -= b.speed * dt;
+    if (b.x < -5) b.x = 165;
+    b.wingPhase += 5 * dt;
+  });
+
+  // Update floaters
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    floaters[i].age += dt;
+    floaters[i].y -= 22 * dt;
+    if (floaters[i].age > floaters[i].life) floaters.splice(i, 1);
+  }
+
+  updateHUD();
+}
+
+function spawnSheikh() {
+  const ss = stations.sheikhSpot;
+  if (ss.active) return;
+  ss.active = true;
+  ss.timer = ss.timerMax;
+  sheikhBubble.active = true;
+  sheikhBubble.timer = sheikhBubble.duration;
+  const alert = document.getElementById('sheikhAlert');
+  alert.textContent = '👑 SHEIKH IS HERE! Cut logs wanted!';
+  alert.style.background = '#8a6000';
+  alert.style.borderColor = '#f5c842';
+  alert.style.color = '#f5c842';
+  alert.style.display = 'block';
+  setTimeout(() => { alert.style.display = 'none'; }, 3500);
+}
+
+function sendWorkerTo(stationId) {
+  const s = stations[stationId];
+  if (!s) return;
+  // Cancel current task (burn station keeps running independently)
+  worker.task = null;
+  worker.taskTimer = 0;
+  Object.values(stations).forEach(st => { if (st.id !== 'burnStation') st.working = false; });
+  const cx = s.x + s.w / 2;
+  const cy = s.y + s.h - 2;
+  worker.tx = cx;
+  worker.ty = cy;
+  worker.moving = true;
+  worker.destStation = stationId;
+}
+
+function beginStationWork(stationId) {
+  const s = stations[stationId];
+  if (!s) return;
+
+  if (stationId === 'forest') {
+    // Chop log if inventory not full
+    if (worker.inventory.length < worker.maxCarry) {
+      worker.task = { stationId, type: 'get_log' };
+      worker.taskDuration = s.duration;
+      worker.taskTimer = 0;
+      s.working = true; s.progress = 0;
+    } else { worker.destStation = null; }
+    return;
+  }
+
+  if (stationId === 'chopStation') {
+    if (worker.inventory.includes('log') && s.queue < s.maxQueue) {
+      // Don't remove from inventory yet — swap log→chopped on completion
+      s.queue++;
+      worker.task = { stationId, type: 'deposit_log' };
+      worker.taskDuration = 0.8;
+      worker.taskTimer = 0;
+      s.working = true; s.progress = 0;
+    } else { worker.destStation = null; }
+    return;
+  }
+
+  if (stationId === 'burnStation') {
+    const bs = stations.burnStation;
+    // Pick up any ready charcoal first
+    if (bs.charcoalReady > 0 && worker.inventory.length < worker.maxCarry) {
+      const canPickup = Math.min(bs.charcoalReady, worker.maxCarry - worker.inventory.length);
+      for (let i = 0; i < canPickup; i++) {
+        worker.inventory.push('charcoal');
+        bs.charcoalReady--;
+      }
+    }
+    // Queue all chopped logs for burning — keep them in inventory until done
+    const chopCount = worker.inventory.filter(i => i === 'chopped').length;
+    const canQueue = Math.min(chopCount, bs.maxQueue - bs.queue);
+    bs.queue += canQueue;        // station tracks how many are burning
+    bs.pendingSwap = (bs.pendingSwap || 0) + canQueue; // how many to swap in inv on completion
+    worker.destStation = 'burnStation';
+    return;
+  }
+
+  if (stationId === 'market') {
+    // Worker delivers charcoal from inventory to market readyToSell shelf
+    const ms = stations.market;
+    let delivered = 0;
+    while (worker.inventory.includes('charcoal') && ms.readyToSell < ms.maxQueue) {
+      const idx = worker.inventory.indexOf('charcoal');
+      worker.inventory.splice(idx, 1);
+      ms.readyToSell++;
+      delivered++;
+    }
+    worker.destStation = null; return;
+  }
+
+  if (stationId === 'sheikhSpot') {
+    const ss = stations.sheikhSpot;
+    if (!ss.active) { worker.destStation = null; return; }
+    // Sheikh only accepts chopped (cut) logs — not raw, not charcoal
+    let soldItem = null;
+    if (worker.inventory.includes('chopped')) soldItem = 'chopped';
+
+    if (soldItem) {
+      const idx = worker.inventory.indexOf(soldItem);
+      worker.inventory.splice(idx, 1);
+      const earned = ss.sellPrice;
+      GS.wealth += earned;
+      GS.sheikhsServed++;
+      addFloater('💰 +' + earned + '!!', ss.x + ss.w/2, ss.y, 'sheikh');
+      ss.active = false; ss.timer = 0;
+      sheikhBubble.active = false;
+      document.getElementById('sheikhAlert').style.display = 'none';
+    }
+    worker.destStation = null; return;
+  }
+}
+
+function completeTask(task) {
+  const s = stations[task.stationId];
+  if (!s) return;
+  s.working = false;
+
+  if (task.type === 'get_log') {
+    if (worker.inventory.length < worker.maxCarry) {
+      worker.inventory.push('log');
+      GS.logsChopped++;
+    }
+    // Continue chopping if space
+    if (worker.inventory.length < worker.maxCarry) {
+      worker.task = { stationId: task.stationId, type: 'get_log' };
+      worker.taskDuration = s.duration;
+      worker.taskTimer = 0;
+      s.working = true; s.progress = 0;
+    }
+    return;
+  }
+
+  if (task.type === 'deposit_log') {
+    // Atomically swap one raw log → chopped in inventory
+    s.queue--;
+    const rawIdx = worker.inventory.indexOf('log');
+    if (rawIdx >= 0) {
+      worker.inventory.splice(rawIdx, 1);
+      worker.inventory.push('chopped');
+    }
+    s.working = false;
+    // Loop: if still carrying raw logs, keep chopping
+    if (worker.inventory.includes('log') && s.queue < s.maxQueue) {
+      s.queue++;
+      worker.task = { stationId: task.stationId, type: 'deposit_log' };
+      worker.taskDuration = 0.8;
+      worker.taskTimer = 0;
+      s.working = true; s.progress = 0;
+    }
+    return;
+  }
+}
+
+// ─── CANVAS TAP / CLICK ───
+function showTapRing(s) {
+  // Remove any existing ring
+  const old = document.querySelector('.tap-ring');
+  if (old) old.remove();
+  const ring = document.createElement('div');
+  ring.className = 'tap-ring';
+  const scaleX = W() / GRID_W, scaleY = H() / GRID_H;
+  ring.style.left = (s.x * scaleX) + 'px';
+  ring.style.top = (s.y * scaleY + 52) + 'px'; // offset for HUD
+  ring.style.width = (s.w * scaleX) + 'px';
+  ring.style.height = (s.h * scaleY) + 'px';
+  // Adjust for HUD offset in canvas coords
+  ring.style.top = (s.y / GRID_H * H()) + 'px';
+  wrap.appendChild(ring);
+  setTimeout(() => ring.remove(), 600);
+}
+
+function handleTap(ex, ey) {
+  if (!GS.running) return;
+  // Adjust for HUD height (52px) — canvas starts below HUD
+  const gx = (ex / W()) * GRID_W;
+  const gy = (ey / H()) * GRID_H;
+
+  for (const [id, s] of Object.entries(stations)) {
+    if (gx >= s.x && gx <= s.x + s.w && gy >= s.y && gy <= s.y + s.h) {
+      showTapRing(s);
+      sendWorkerTo(id);
+      document.getElementById('tapHint').style.display = 'none';
+      return;
+    }
+  }
+}
+
+canvas.addEventListener('click', (e) => {
+  const r = canvas.getBoundingClientRect();
+  handleTap(e.clientX - r.left, e.clientY - r.top);
+});
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches[0];
+  handleTap(t.clientX - r.left, t.clientY - r.top);
+}, { passive: false });
+
+// ─── HUD UPDATE ───
+function updateHUD() {
+  document.getElementById('hudWealth').textContent = GS.wealth;
+
+  // Mystery customer — show ? until first served
+  const sheikhEl = document.getElementById('hudSheikh');
+  if (GS.sheikhsServed === 0) {
+    sheikhEl.textContent = '?';
+    sheikhEl.style.color = '#f5c842';
+  } else {
+    sheikhEl.textContent = GS.sheikhsServed;
+    sheikhEl.style.color = '#f5f0e8';
+  }
+
+  const m = Math.floor(GS.timeLeft / 60);
+  const s = Math.floor(GS.timeLeft % 60);
+  const tEl = document.getElementById('hudTime');
+  tEl.textContent = m + ':' + String(s).padStart(2,'0');
+  if (GS.timeLeft <= 30) {
+    tEl.className = 'hud-val red';
+  } else if (GS.timeLeft <= 60) {
+    tEl.className = 'hud-val';
+    tEl.style.color = '#f5a832'; // amber
+  } else {
+    tEl.className = 'hud-val';
+    tEl.style.color = '';
+  }
+
+  // 3-counter inventory: Raw Logs | Chopped Logs | Charcoal
+  const rawLogs  = worker.inventory.filter(i => i === 'log').length;
+  const cutLogs  = worker.inventory.filter(i => i === 'chopped').length;
+  const charcoal = worker.inventory.filter(i => i === 'charcoal').length;
+  const hudRaw  = document.getElementById('hudRaw');
+  const hudCut  = document.getElementById('hudCut');
+  const hudChar = document.getElementById('hudChar');
+  if (hudRaw)  hudRaw.textContent  = rawLogs;
+  if (hudCut)  hudCut.textContent  = cutLogs;
+  if (hudChar) hudChar.textContent = charcoal;
+}
+
+// ─── RENDER ───
+function render() {
+  ctx.clearRect(0, 0, W(), H());
+
+  drawWorld();
+  drawStations();
+  drawWorker();
+  drawFloaters();
+}
+
+function drawWorld() {
+  const t = Date.now() / 1000;
+  const urgent = GS.timeLeft <= 60;
+  const critical = GS.timeLeft <= 30;
+
+  // ── Sky — shifts from blue → amber → deep red as time runs out ──
+  const skyTop    = critical ? '#8b1a0a' : urgent ? '#c05a1a' : '#5a9ed4';
+  const skyMid    = critical ? '#c0340a' : urgent ? '#e07830' : '#8ac4e8';
+  const skyBottom = critical ? '#e05020' : urgent ? '#f0a840' : '#c8e8f8';
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, sy(62));
+  skyGrad.addColorStop(0, skyTop);
+  skyGrad.addColorStop(0.55, skyMid);
+  skyGrad.addColorStop(1, skyBottom);
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W(), sy(62));
+
+  // Horizon glow band
+  ctx.fillStyle = critical ? 'rgba(220,60,0,0.25)' : urgent ? 'rgba(240,140,40,0.2)' : 'rgba(200,230,255,0.15)';
+  ctx.fillRect(0, sy(50), W(), sy(14));
+
+  // Sun — reddens with urgency
+  const sunColor  = critical ? '#ff4010' : urgent ? '#ff9020' : '#ffe066';
+  const sunColor2 = critical ? '#cc2000' : urgent ? '#dd6010' : '#ffcc00';
+  const sunX = sx(148), sunY = sy(18);
+  // Sun glow
+  const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sw(18));
+  glow.addColorStop(0, critical ? 'rgba(255,60,0,0.3)' : urgent ? 'rgba(255,160,0,0.25)' : 'rgba(255,240,100,0.2)');
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(sunX, sunY, sw(18), 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = sunColor;
+  ctx.beginPath(); ctx.arc(sunX, sunY, sw(10), 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = sunColor2;
+  ctx.beginPath(); ctx.arc(sunX, sunY, sw(7), 0, Math.PI*2); ctx.fill();
+
+  // Pixel clouds — tinted by urgency
+  const cloudTint = critical ? 'rgba(255,160,120,0.85)' : urgent ? 'rgba(255,220,180,0.9)' : 'rgba(255,255,255,0.9)';
+  [[18,14,1.0],[52,9,0.8],[98,12,0.9]].forEach(([cx,cy,sc]) => {
+    ctx.fillStyle = cloudTint;
+    [
+      [0,0,sw(5*sc)],[sw(7*sc),-sh(4*sc),sw(6*sc)],[sw(14*sc),0,sw(5*sc)],
+      [sw(-4*sc),sh(3*sc),sw(4*sc)],[sw(4*sc),sh(4*sc),sw(7*sc)],[sw(11*sc),sh(4*sc),sw(5*sc)],
+    ].forEach(([dx,dy,r]) => {
+      ctx.beginPath(); ctx.arc(sx(cx)+dx+Math.sin(t*0.08+cx)*sw(1.5), sy(cy)+dy, r, 0, Math.PI*2); ctx.fill();
+    });
+  });
+
+  // Animated birds — position updated in game loop
+  birds.forEach(b => {
+    const bx = sx(b.x), by = sy(b.y);
+    const wing = Math.sin(b.wingPhase) * sh(1.5 * b.size);
+    ctx.fillStyle = critical ? '#331008' : '#1a1a2a';
+    ctx.fillRect(bx, by, sw(2.5*b.size), sh(1*b.size));
+    ctx.fillRect(bx - sw(2*b.size), by - wing, sw(2*b.size), sh(0.8*b.size));
+    ctx.fillRect(bx + sw(2.5*b.size), by - wing, sw(2*b.size), sh(0.8*b.size));
+  });
+
+  // ── Ground — darkens with urgency ──
+  const gndColor  = critical ? '#3a5020' : urgent ? '#4a7a2a' : '#5a8a3c';
+  const gndDark   = critical ? '#243214' : urgent ? '#305018' : '#3d6128';
+  ctx.fillStyle = gndColor;
+  ctx.fillRect(0, sy(55), W(), H() - sy(55));
+
+  // Checkerboard tiles
+  ctx.fillStyle = gndDark;
+  for (let tx = 0; tx < GRID_W; tx += 8) {
+    for (let ty = 56; ty < GRID_H; ty += 8) {
+      if ((Math.floor(tx/8) + Math.floor(ty/8)) % 2 === 0) {
+        ctx.fillRect(sx(tx), sy(ty), sw(8), sh(8));
+      }
+    }
+  }
+
+  // Grass strip at sky/ground boundary — layered tufts
+  const grassTop  = critical ? '#3a6010' : urgent ? '#4a7820' : '#5a9a2a';
+  const grassTuft = critical ? '#2a4a08' : urgent ? '#386015' : '#3d7018';
+  // Base strip
+  ctx.fillStyle = grassTop;
+  ctx.fillRect(0, sy(53), W(), sy(5));
+  // Tuft row — pixel zigzag
+  for (let tx = 0; tx < GRID_W; tx += 4) {
+    const hgt = ((tx % 8 === 0) ? 4 : 2) + Math.sin(t * 1.2 + tx * 0.5) * 0.5;
+    ctx.fillStyle = grassTuft;
+    ctx.fillRect(sx(tx), sy(53 - hgt), sw(3), sh(hgt + 1));
+  }
+
+  // ── Paths ──
+  const pathC  = critical ? '#a08050' : C.path;
+  const pathD  = critical ? '#806030' : C.pathDark;
+  ctx.fillStyle = pathC;
+  ctx.fillRect(sx(14), sy(148), sw(130), sh(10));   // horizontal road
+  ctx.fillRect(sx(30), sy(80),  sw(8),   sh(70));   // to forest
+  ctx.fillRect(sx(80), sy(100), sw(8),   sh(50));   // to cut station
+  ctx.fillRect(sx(122),sy(100), sw(8),   sh(50));   // to burn station
+  ctx.fillRect(sx(44), sy(148), sw(8),   sh(30));   // to market (between forest & cut)
+  ctx.fillRect(sx(96), sy(148), sw(8),   sh(30));   // to sheikh (between cut & burn)
+  // Path edge shading
+  ctx.fillStyle = pathD;
+  ctx.fillRect(sx(14), sy(148), sw(130), sh(2));
+  ctx.fillRect(sx(14), sy(156), sw(130), sh(2));
+
+  // Critical vignette flash
+  if (critical) {
+    const flash = 0.12 + Math.sin(t * 6) * 0.06;
+    ctx.fillStyle = `rgba(180,20,0,${flash})`;
+    ctx.fillRect(0, 0, W(), H());
+  }
+}
+
+function drawStations() {
+  drawForest();
+  drawChopStation();
+  drawBurnStation();
+  drawMarket();
+  drawSheikhSpot();
+}
+
+function drawForest() {
+  const s = stations.forest;
+  // Background patch
+  ctx.fillStyle = C.groundDark;
+  ctx.fillRect(sx(s.x - 4), sy(s.y - 6), sw(s.w + 8), sh(s.h + 8));
+
+  // Multiple trees
+  const treePositions = [[s.x+2,s.y+4],[s.x+14,s.y+2],[s.x+26,s.y+6],[s.x+8,s.y+22],[s.x+20,s.y+18]];
+  treePositions.forEach(([tx,ty]) => drawTree(tx, ty, 10, 14));
+
+  // Station label
+  drawStationLabel(s, C.treeLeafLight);
+
+  // Progress if chopping
+  if (s.working) drawProgressBar(s, s.progress, C.wood, 'chop');
+}
+
+function drawTree(tx, ty, tw, th) {
+  // Trunk
+  ctx.fillStyle = C.treeTrunk;
+  ctx.fillRect(sx(tx + tw/2 - 1), sy(ty + th*0.55), sw(3), sh(th*0.45));
+  // Leaves - layered
+  ctx.fillStyle = C.treeLeafDark;
+  ctx.fillRect(sx(tx), sy(ty + th*0.35), sw(tw), sh(th*0.35));
+  ctx.fillStyle = C.treeLeaf;
+  ctx.fillRect(sx(tx+1), sy(ty + th*0.2), sw(tw-2), sh(th*0.3));
+  ctx.fillStyle = C.treeLeafLight;
+  ctx.fillRect(sx(tx+2), sy(ty), sw(tw-4), sh(th*0.25));
+  // Pixel highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(sx(tx+2), sy(ty+1), sw(3), sh(2));
+}
+
+function drawChopStation() {
+  const s = stations.chopStation;
+  // Building base
+  ctx.fillStyle = C.buildingWall;
+  ctx.fillRect(sx(s.x), sy(s.y), sw(s.w), sh(s.h));
+  // Roof
+  ctx.fillStyle = C.buildingRoof;
+  ctx.fillRect(sx(s.x - 2), sy(s.y - 6), sw(s.w + 4), sh(7));
+  // Door
+  ctx.fillStyle = C.buildingDoor;
+  ctx.fillRect(sx(s.x + s.w/2 - 3), sy(s.y + s.h - 10), sw(6), sh(10));
+  // Chopping block (icon)
+  ctx.fillStyle = C.stump;
+  ctx.fillRect(sx(s.x + 4), sy(s.y + 6), sw(8), sh(6));
+  ctx.fillStyle = C.treeTrunk;
+  ctx.fillRect(sx(s.x + 5), sy(s.y + 4), sw(6), sh(4));
+  // Axe icon
+  ctx.fillStyle = C.charcoal;
+  ctx.fillRect(sx(s.x + 16), sy(s.y + 4), sw(2), sh(10));
+  ctx.fillStyle = '#888';
+  ctx.fillRect(sx(s.x + 14), sy(s.y + 4), sw(6), sh(5));
+  // Queue indicator (log piles)
+  const qs = Math.min(s.queue, 6);
+  for (let i = 0; i < qs; i++) {
+    ctx.fillStyle = C.wood;
+    ctx.fillRect(sx(s.x + i*3 + 1), sy(s.y + s.h + 2), sw(2), sh(4));
+  }
+
+  drawStationLabel(s, C.wood);
+  if (s.working) drawProgressBar(s, s.progress, C.wood, 'chop');
+}
+
+function drawBurnStation() {
+  const s = stations.burnStation;
+  ctx.fillStyle = '#2a1a0a';
+  ctx.fillRect(sx(s.x), sy(s.y), sw(s.w), sh(s.h));
+  // Fire pit
+  ctx.fillStyle = '#3a2010';
+  ctx.fillRect(sx(s.x + 3), sy(s.y + 8), sw(s.w - 6), sh(s.h - 12));
+  if (s.working || s.queue > 0) {
+    // Animated fire
+    const t = Date.now() / 200;
+    [[s.x+8,s.y+14,4,8,'#f83'],[s.x+14,s.y+10,6,12,'#fa0'],[s.x+20,s.y+14,4,8,'#f83'],
+     [s.x+10,s.y+8,4,6,'#ff0'],[s.x+16,s.y+6,3,6,'#ff0']].forEach(([fx,fy,fw,fh,fc]) => {
+      const flicker = Math.sin(t + fx) * 1;
+      ctx.fillStyle = fc;
+      ctx.fillRect(sx(fx), sy(fy + flicker), sw(fw), sh(fh));
+    });
+    // Smoke particles
+    ctx.fillStyle = 'rgba(100,100,100,0.3)';
+    for (let i = 0; i < 3; i++) {
+      const off = (t * 0.5 + i * 0.7) % 1;
+      ctx.beginPath();
+      ctx.arc(sx(s.x + 12 + i*4), sy(s.y + 4 - off*12), sw(2 + off*2), 0, Math.PI*2);
+      ctx.fill();
+    }
+  } else {
+    // Cold pit
+    ctx.fillStyle = '#4a3020';
+    ctx.fillRect(sx(s.x + 5), sy(s.y + 10), sw(s.w - 10), sh(s.h - 16));
+  }
+
+  // Charcoal input queue (logs waiting to burn)
+  const qc = Math.min(s.queue, 6);
+  for (let i = 0; i < qc; i++) {
+    ctx.fillStyle = C.wood;
+    ctx.fillRect(sx(s.x + i*3 + 1), sy(s.y + s.h + 2), sw(3), sh(4));
+  }
+  // Charcoal output piles — compact display for up to 10
+  const cr = Math.min(s.charcoalReady || 0, 10);
+  for (let i = 0; i < cr; i++) {
+    const col = i % 5;
+    const row = Math.floor(i / 5);
+    ctx.fillStyle = C.charcoal;
+    ctx.fillRect(sx(s.x + col*3 + 1), sy(s.y + s.h + 2 + row*5), sw(3), sh(4));
+    ctx.fillStyle = C.charcoalLight;
+    ctx.fillRect(sx(s.x + col*3 + 1), sy(s.y + s.h + 2 + row*5), sw(1), sh(2));
+  }
+  // Bouncing PICK UP label when charcoal is ready
+  if (cr > 0) {
+    const bounce = Math.abs(Math.sin(Date.now() / 300)) * sh(3);
+    ctx.font = `${sw(4.5)}px 'Press Start 2P'`;
+    ctx.textAlign = 'center';
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillText('▲ PICK UP', sx(s.x + s.w/2) + 1, sy(s.y + s.h + 20) - bounce + 1);
+    // Text
+    ctx.fillStyle = '#f5c842';
+    ctx.fillText('▲ PICK UP', sx(s.x + s.w/2), sy(s.y + s.h + 20) - bounce);
+    ctx.textAlign = 'left';
+  }
+
+  drawStationLabel(s, C.fire2);
+  if (s.working) drawProgressBar(s, s.progress, C.fire, 'burn');
+}
+
+function drawMarket() {
+  const s = stations.market;
+
+  // Stall building
+  ctx.fillStyle = C.buildingWall;
+  ctx.fillRect(sx(s.x), sy(s.y), sw(s.w), sh(s.h));
+  // Awning — striped red/white
+  ctx.fillStyle = '#c84040';
+  ctx.fillRect(sx(s.x - 2), sy(s.y - 7), sw(s.w + 4), sh(8));
+  ctx.fillStyle = '#f8f0e0';
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(sx(s.x - 2 + i*8), sy(s.y - 7), sw(4), sh(8));
+  }
+  // Window counter
+  ctx.fillStyle = C.wood;
+  ctx.fillRect(sx(s.x + 2), sy(s.y + 5), sw(s.w - 4), sh(4));
+  // Charcoal on shelf (readyToSell)
+  const rts = Math.min(s.readyToSell || 0, 5);
+  for (let i = 0; i < rts; i++) {
+    ctx.fillStyle = C.charcoal;
+    ctx.fillRect(sx(s.x + 3 + i*4), sy(s.y + 2), sw(3), sh(4));
+    ctx.fillStyle = C.charcoalLight;
+    ctx.fillRect(sx(s.x + 3 + i*4), sy(s.y + 2), sw(1), sh(2));
+  }
+  // 1× price tag (left side)
+  ctx.fillStyle = '#fff8e0';
+  ctx.fillRect(sx(s.x), sy(s.y + 9), sw(12), sh(8));
+  ctx.strokeStyle = '#c84040'; ctx.lineWidth = 0.8;
+  ctx.strokeRect(sx(s.x), sy(s.y + 9), sw(12), sh(8));
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#c84040';
+  ctx.font = `bold ${sw(4.5)}px 'Press Start 2P'`;
+  ctx.textAlign = 'center';
+  ctx.fillText('1×', sx(s.x + 6), sy(s.y + 15));
+  ctx.textAlign = 'left';
+
+  // Orders waiting — dark ink so readable on cream wall
+  const ordersW = s.ordersWaiting || 0;
+  if (ordersW > 0) {
+    ctx.font = `${sw(3.5)}px 'Press Start 2P'`;
+    ctx.fillStyle = '#2b1800';
+    ctx.textAlign = 'left';
+    ctx.fillText('ORDERS:', sx(s.x), sy(s.y + 20));
+    for (let i = 0; i < Math.min(ordersW, 5); i++) {
+      ctx.fillStyle = '#c84040';
+      ctx.beginPath();
+      ctx.arc(sx(s.x + 1 + i * 5), sy(s.y + 25), sw(2), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.textAlign = 'left';
+  }
+
+  // Live NPC customers from npcPool
+  for (const npc of npcPool) {
+    const nc = NPC_COLORS[npc.colorIdx];
+    const ny = s.y + s.h + 12; // below the station label
+    const bob = npc.state === 'waiting' ? Math.sin(Date.now()/600 + npc.colorIdx) * 0.4 : 0;
+    drawNPC(npc.x, ny + bob, nc.skin, nc.shirt, nc.pants, npc.colorIdx);
+    // Buying sparkle only
+    if (npc.state === 'buying') {
+      ctx.fillStyle = C.gold;
+      ctx.fillRect(sx(npc.x + 1), sy(ny - 5), sw(2), sh(2));
+      ctx.fillRect(sx(npc.x + 4), sy(ny - 7), sw(2), sh(2));
+      ctx.fillRect(sx(npc.x + 7), sy(ny - 4), sw(2), sh(2));
+    }
+  }
+
+  drawStationLabel(s, '#f8d0a0');
+}
+
+function drawNPC(gx, gy, skinColor, shirtColor, pantColor, variant) {
+  const t = Date.now() / 600;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(sx(gx + 3), sy(gy + 14), sw(4), sh(1.5), 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Legs
+  ctx.fillStyle = pantColor;
+  ctx.fillRect(sx(gx + 1), sy(gy + 9), sw(2), sh(4));
+  ctx.fillRect(sx(gx + 3), sy(gy + 9), sw(2), sh(4));
+  // Shoes
+  ctx.fillStyle = '#1a0e05';
+  ctx.fillRect(sx(gx), sy(gy + 12), sw(3), sh(2));
+  ctx.fillRect(sx(gx + 3), sy(gy + 12), sw(3), sh(2));
+
+  // Body
+  ctx.fillStyle = shirtColor;
+  ctx.fillRect(sx(gx), sy(gy + 4), sw(6), sh(6));
+  // Collar highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(sx(gx + 2), sy(gy + 4), sw(2), sh(2));
+
+  // Arms hanging
+  ctx.fillStyle = shirtColor;
+  ctx.fillRect(sx(gx - 1), sy(gy + 5), sw(2), sh(4));
+  ctx.fillRect(sx(gx + 5), sy(gy + 5), sw(2), sh(4));
+  // Hands
+  ctx.fillStyle = skinColor;
+  ctx.fillRect(sx(gx - 1), sy(gy + 8), sw(2), sh(2));
+  ctx.fillRect(sx(gx + 5), sy(gy + 8), sw(2), sh(2));
+
+  // Head
+  ctx.fillStyle = skinColor;
+  ctx.fillRect(sx(gx + 1), sy(gy), sw(4), sh(5));
+  // Eyes
+  ctx.fillStyle = C.black;
+  ctx.fillRect(sx(gx + 2), sy(gy + 2), sw(1), sh(1));
+  ctx.fillRect(sx(gx + 4), sy(gy + 2), sw(1), sh(1));
+
+  // Hair — different per variant
+  const hairColors = ['#2b1800', '#8b4513', '#1a1a1a'];
+  ctx.fillStyle = hairColors[variant % 3];
+  ctx.fillRect(sx(gx + 1), sy(gy), sw(4), sh(2));
+  if (variant === 1) { // hat
+    ctx.fillStyle = '#4a2a0a';
+    ctx.fillRect(sx(gx), sy(gy - 2), sw(6), sh(3));
+  }
+  if (variant === 2) { // headscarf
+    ctx.fillStyle = '#c84040';
+    ctx.fillRect(sx(gx + 1), sy(gy), sw(4), sh(2));
+  }
+}
+
+function drawSheikhSpot() {
+  const s = stations.sheikhSpot;
+  const t = Date.now() / 1000;
+
+  // ── Anticipation silhouette (15s before sheikh arrives) ──
+  if (sheikhAnticipation.active && !s.active) {
+    const progress = 1 - (sheikhAnticipation.timer / sheikhAnticipation.duration);
+    const alpha = 0.15 + progress * 0.45;
+    // Dim base
+    ctx.fillStyle = `rgba(42,34,0,${0.4 + progress * 0.3})`;
+    ctx.fillRect(sx(s.x), sy(s.y), sw(s.w), sh(s.h));
+    // Dashed border growing in
+    ctx.strokeStyle = `rgba(245,200,66,${alpha})`;
+    ctx.lineWidth = sw(1.5);
+    ctx.setLineDash([sw(4), sw(3)]);
+    ctx.strokeRect(sx(s.x), sy(s.y), sw(s.w), sh(s.h));
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1;
+    // Silhouette figure (dark, fuzzy)
+    ctx.globalAlpha = alpha;
+    drawSheikh(s.x + s.w/2 - 6, s.y + 2);
+    ctx.globalAlpha = 1;
+    // "..." bubble hinting
+    const bobble = Math.sin(t * 3) * sh(1);
+    ctx.fillStyle = 'rgba(255,251,230,0.8)';
+    ctx.fillRect(sx(s.x - 16), sy(s.y + 2) + bobble, sw(14), sh(8));
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 0.8;
+    ctx.strokeRect(sx(s.x - 16), sy(s.y + 2) + bobble, sw(14), sh(8));
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#333';
+    ctx.font = `bold ${sw(5)}px 'Press Start 2P'`;
+    ctx.textAlign = 'center';
+    ctx.fillText('...', sx(s.x - 9), sy(s.y + 8) + bobble);
+    ctx.textAlign = 'left';
+    drawStationLabel({ ...s, label: '❓ MYSTERY' }, `rgba(245,200,66,${alpha})`);
+    return;
+  }
+
+  // ── Leaving animation (missed the sheikh) ──
+  if (s.leaving) {
+    const prog = 1 - s.leaveTimer / 1.8;
+    // Sheikh walks off right, shaking head
+    const walkX = s.x + prog * 20;
+    const shake = Math.sin(prog * Math.PI * 6) * 1.5;
+    ctx.globalAlpha = Math.max(0, 1 - prog * 1.2);
+    drawSheikh(walkX + shake, s.y + 2);
+    ctx.globalAlpha = 1;
+    // Sad X marks
+    ctx.fillStyle = '#d82020';
+    ctx.font = `bold ${sw(8)}px 'Press Start 2P'`;
+    ctx.textAlign = 'center';
+    ctx.fillText('✗', sx(s.x + s.w/2), sy(s.y + s.h/2 + 3));
+    ctx.textAlign = 'left';
+    drawStationLabel({ ...s, label: '❌ MISSED' }, '#d82020');
+    return;
+  }
+
+  if (s.active) {
+    // Glowing base
+    ctx.fillStyle = '#2a2200';
+    ctx.fillRect(sx(s.x), sy(s.y), sw(s.w), sh(s.h));
+    // Pulsing gold border
+    const pulse = 0.7 + Math.sin(t * 5) * 0.3;
+    ctx.strokeStyle = `rgba(245,200,66,${pulse})`;
+    ctx.lineWidth = sw(2);
+    ctx.strokeRect(sx(s.x), sy(s.y), sw(s.w), sh(s.h));
+    ctx.lineWidth = 1;
+
+    // Sheikh NPC
+    drawSheikh(s.x + s.w/2 - 6, s.y + 2);
+
+    // "SHEIKH" name above
+    ctx.font = `${sw(5)}px 'Press Start 2P'`;
+    ctx.strokeStyle = C.black; ctx.lineWidth = sw(1);
+    ctx.textAlign = 'center';
+    ctx.strokeText('SHEIKH', sx(s.x + s.w/2), sy(s.y - 4));
+    ctx.fillStyle = C.gold;
+    ctx.fillText('SHEIKH', sx(s.x + s.w/2), sy(s.y - 4));
+    ctx.textAlign = 'left'; ctx.lineWidth = 1;
+
+    // Speech bubble — right of sheikh, tail points left, fits within screen
+    if (sheikhBubble.active) {
+      const bw = sw(44); const bh = sh(42);
+      const bx = sx(s.x + s.w + 2);  // just right of sheikh
+      const by = sy(s.y - 6);
+      ctx.fillStyle = '#fffbe6';
+      ctx.strokeStyle = C.black; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 3);
+      else ctx.rect(bx, by, bw, bh);
+      ctx.fill(); ctx.stroke();
+      // Tail left
+      ctx.fillStyle = '#fffbe6';
+      ctx.beginPath();
+      ctx.moveTo(bx, by + bh * 0.35);
+      ctx.lineTo(bx - sw(6), by + bh * 0.47);
+      ctx.lineTo(bx, by + bh * 0.59);
+      ctx.fill();
+      ctx.strokeStyle = C.black; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bx + 1, by + bh * 0.35);
+      ctx.lineTo(bx - sw(6), by + bh * 0.47);
+      ctx.lineTo(bx + 1, by + bh * 0.59);
+      ctx.stroke();
+      // Text — tight font, short lines to fit bw:44
+      ctx.font = `${sw(2.8)}px 'Press Start 2P'`;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#333';
+      ctx.fillText('Give me cut', bx + sw(2), by + sh(6));
+      ctx.fillText('logs. Unburned.', bx + sw(2), by + sh(12));
+      ctx.fillText("Don't waste", bx + sw(2), by + sh(18));
+      ctx.fillText('them on the', bx + sw(2), by + sh(24));
+      ctx.fillText('fire.', bx + sw(2), by + sh(30));
+      // Divider
+      ctx.strokeStyle = '#ddd'; ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(bx + sw(2), by + sh(33));
+      ctx.lineTo(bx + bw - sw(2), by + sh(33));
+      ctx.stroke();
+      ctx.lineWidth = 1;
+      // 3× price tag
+      const tagW = sw(13), tagH = sh(6);
+      const tagX = bx + bw/2 - tagW/2;
+      const tagY = by + sh(34);
+      ctx.fillStyle = '#fff8e0';
+      ctx.fillRect(tagX, tagY, tagW, tagH);
+      ctx.strokeStyle = '#c84040'; ctx.lineWidth = 0.8;
+      ctx.strokeRect(tagX, tagY, tagW, tagH);
+      ctx.lineWidth = 1;
+      ctx.fillStyle = '#c84040';
+      ctx.font = `bold ${sw(3.8)}px 'Press Start 2P'`;
+      ctx.textAlign = 'center';
+      ctx.fillText('3×', tagX + tagW/2, tagY + tagH - sh(0.8));
+      ctx.textAlign = 'left';
+    }
+
+    // Timer bar
+    const timerPct = s.timer / s.timerMax;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(sx(s.x + 2), sy(s.y + s.h - 6), sw(s.w - 4), sh(4));
+    ctx.fillStyle = timerPct > 0.5 ? C.gold : timerPct > 0.25 ? C.fire2 : C.red;
+    ctx.fillRect(sx(s.x + 2), sy(s.y + s.h - 6), sw((s.w - 4) * timerPct), sh(4));
+
+  } else {
+    // Empty spot — faint ? with subtle anticipation glow if approaching
+    ctx.fillStyle = '#111';
+    ctx.fillRect(sx(s.x), sy(s.y), sw(s.w), sh(s.h));
+    ctx.strokeStyle = '#2a2200'; ctx.lineWidth = 1;
+    ctx.strokeRect(sx(s.x), sy(s.y), sw(s.w), sh(s.h));
+    ctx.font = `${sw(14)}px 'Press Start 2P'`;
+    ctx.fillStyle = 'rgba(245,200,66,0.10)';
+    ctx.textAlign = 'center';
+    ctx.fillText('?', sx(s.x + s.w/2), sy(s.y + s.h/2 + 5));
+    ctx.textAlign = 'left';
+    drawStationLabel({ ...s, label: '❓ MYSTERY' }, '#444');
+  }
+
+  if (s.active) drawStationLabel({ ...s, label: '👑 SHEIKH' }, C.gold);
+}
+
+function drawSheikh(gx, gy) {
+  const t = Date.now() / 1000;
+  // Idle sway
+  const sway = Math.sin(t * 1.5) * 0.3;
+
+  // Turban
+  ctx.fillStyle = '#c8961a';
+  ctx.fillRect(sx(gx+1+sway), sy(gy), sw(10), sh(3));
+  ctx.fillStyle = '#e0aa22';
+  ctx.fillRect(sx(gx+2+sway), sy(gy-2), sw(8), sh(3));
+  // Face
+  ctx.fillStyle = C.skin;
+  ctx.fillRect(sx(gx+2+sway), sy(gy+3), sw(8), sh(6));
+  // Eyes
+  ctx.fillStyle = C.black;
+  ctx.fillRect(sx(gx+3+sway), sy(gy+5), sw(2), sh(2));
+  ctx.fillRect(sx(gx+7+sway), sy(gy+5), sw(2), sh(2));
+  ctx.fillStyle = C.white;
+  ctx.fillRect(sx(gx+4+sway), sy(gy+5), sw(1), sh(1));
+  ctx.fillRect(sx(gx+8+sway), sy(gy+5), sw(1), sh(1));
+  // Beard
+  ctx.fillStyle = '#d0c0a0';
+  ctx.fillRect(sx(gx+2+sway), sy(gy+8), sw(8), sh(3));
+  // Robe
+  ctx.fillStyle = C.sheikhRobe;
+  ctx.fillRect(sx(gx+sway), sy(gy+10), sw(12), sh(12));
+  ctx.fillStyle = C.sheikhDark;
+  ctx.fillRect(sx(gx+sway), sy(gy+10), sw(2), sh(12));
+  ctx.fillRect(sx(gx+10+sway), sy(gy+10), sw(2), sh(12));
+  // Gold belt
+  ctx.fillStyle = C.gold;
+  ctx.fillRect(sx(gx+1+sway), sy(gy+13), sw(10), sh(2));
+  // Legs
+  ctx.fillStyle = '#8a7020';
+  ctx.fillRect(sx(gx+2+sway), sy(gy+22), sw(3), sh(5));
+  ctx.fillRect(sx(gx+7+sway), sy(gy+22), sw(3), sh(5));
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(sx(gx+6), sy(gy+28), sw(6), sh(2), 0, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function drawTinyPerson(gx, gy, bodyColor, pantColor) {
+  // Legacy fallback — use drawNPC
+  drawNPC(gx, gy, C.skin, bodyColor, pantColor, 0);
+}
+
+function drawWorker() {
+  const gx = worker.x - 8;
+  const gy = worker.y - 20;
+  const frame = worker.moving ? worker.animFrame : 0;
+  const flip = worker.facing < 0;
+
+  ctx.save();
+  if (flip) {
+    ctx.translate(sx(worker.x), 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-sx(worker.x), 0);
+  }
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(sx(gx + 8), sy(gy + 22), sw(7), sh(3), 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Legs with walk animation
+  const legOff = frame % 2 === 0 ? 0 : 2;
+  ctx.fillStyle = C.pants;
+  ctx.fillRect(sx(gx + 3), sy(gy + 14 + legOff), sw(4), sh(5));
+  ctx.fillStyle = C.pantsDark;
+  ctx.fillRect(sx(gx + 7), sy(gy + 14 - legOff), sw(4), sh(5));
+  // Shoes
+  ctx.fillStyle = '#1a0e05';
+  ctx.fillRect(sx(gx + 2), sy(gy + 18 + legOff), sw(5), sh(3));
+  ctx.fillRect(sx(gx + 7), sy(gy + 18 - legOff), sw(5), sh(3));
+
+  // Body
+  ctx.fillStyle = C.shirtDark;
+  ctx.fillRect(sx(gx + 2), sy(gy + 8), sw(10), sh(8));
+  ctx.fillStyle = C.shirt;
+  ctx.fillRect(sx(gx + 3), sy(gy + 8), sw(8), sh(7));
+  // Overalls stripe
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.fillRect(sx(gx + 6), sy(gy + 8), sw(2), sh(7));
+
+  // Arms
+  const armOff = frame % 2 === 0 ? 1 : -1;
+  ctx.fillStyle = C.shirt;
+  ctx.fillRect(sx(gx), sy(gy + 9 + armOff), sw(3), sh(6));
+  ctx.fillRect(sx(gx + 11), sy(gy + 9 - armOff), sw(3), sh(6));
+  // Hands
+  ctx.fillStyle = C.skin;
+  ctx.fillRect(sx(gx), sy(gy + 14 + armOff), sw(3), sh(3));
+  ctx.fillRect(sx(gx + 11), sy(gy + 14 - armOff), sw(3), sh(3));
+
+  // Head
+  ctx.fillStyle = C.skinDark;
+  ctx.fillRect(sx(gx + 3), sy(gy + 2), sw(8), sh(8));
+  ctx.fillStyle = C.skin;
+  ctx.fillRect(sx(gx + 4), sy(gy + 2), sw(6), sh(7));
+  // Eyes
+  ctx.fillStyle = C.black;
+  ctx.fillRect(sx(gx + 5), sy(gy + 4), sw(2), sh(2));
+  ctx.fillRect(sx(gx + 8), sy(gy + 4), sw(2), sh(2));
+  // Eye glint
+  ctx.fillStyle = C.white;
+  ctx.fillRect(sx(gx + 6), sy(gy + 4), sw(1), sh(1));
+  ctx.fillRect(sx(gx + 9), sy(gy + 4), sw(1), sh(1));
+  // Mouth
+  ctx.fillStyle = C.black;
+  ctx.fillRect(sx(gx + 6), sy(gy + 7), sw(3), sh(1));
+
+  // Hat
+  ctx.fillStyle = C.wood;
+  ctx.fillRect(sx(gx + 2), sy(gy), sw(10), sh(3));
+  ctx.fillRect(sx(gx + 4), sy(gy - 3), sw(6), sh(4));
+  ctx.fillStyle = C.woodDark;
+  ctx.fillRect(sx(gx + 4), sy(gy - 3), sw(6), sh(1));
+
+  // Inventory indicator above head
+  if (worker.inventory.length > 0) {
+    worker.inventory.forEach((item, i) => {
+      if (item === 'log') {
+        ctx.fillStyle = C.wood;
+        ctx.fillRect(sx(gx + i*4 + 2), sy(gy - 7), sw(3), sh(4));
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.fillRect(sx(gx + i*4 + 2), sy(gy - 7), sw(1), sh(2));
+      } else if (item === 'chopped') {
+        ctx.fillStyle = C.woodDark;
+        ctx.fillRect(sx(gx + i*4 + 2), sy(gy - 7), sw(3), sh(4));
+        ctx.fillStyle = C.wood;
+        ctx.fillRect(sx(gx + i*4 + 2), sy(gy - 5), sw(3), sh(1));
+      } else if (item === 'charcoal') {
+        ctx.fillStyle = C.charcoal;
+        ctx.fillRect(sx(gx + i*4 + 2), sy(gy - 7), sw(3), sh(4));
+        ctx.fillStyle = C.charcoalLight;
+        ctx.fillRect(sx(gx + i*4 + 2), sy(gy - 7), sw(1), sh(2));
+      }
+    });
+  }
+
+  // Axe on back when not chopping
+  if (!worker.task || worker.task.type !== 'get_log') {
+    ctx.fillStyle = C.treeTrunk;
+    ctx.fillRect(sx(gx + 11), sy(gy + 2), sw(2), sh(12));
+    ctx.fillStyle = '#888';
+    ctx.fillRect(sx(gx + 10), sy(gy), sw(6), sh(5));
+    ctx.fillStyle = C.charcoal;
+    ctx.fillRect(sx(gx + 9), sy(gy), sw(2), sh(5));
+  }
+
+  ctx.restore();
+}
+
+function drawStationLabel(s, color) {
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  const labelW = sw(s.w + 4);
+  const labelH = sh(7);
+  ctx.fillRect(sx(s.x - 2), sy(s.y + s.h + 2), labelW, labelH);
+  ctx.fillStyle = color;
+  ctx.font = `${sw(5)}px 'Press Start 2P', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(s.label, sx(s.x + s.w/2), sy(s.y + s.h + 7));
+  ctx.textAlign = 'left';
+}
+
+function drawProgressBar(s, prog, fillColor, type) {
+  const barW = sw(s.w - 4);
+  const barH = sh(5);
+  const bx = sx(s.x + 2);
+  const by = sy(s.y + s.h - 7);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(bx, by, barW, barH);
+  ctx.fillStyle = fillColor;
+  ctx.fillRect(bx, by, barW * prog, barH);
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx, by, barW, barH);
+}
+
+function drawFloaters() {
+  floaters.forEach(f => {
+    ctx.globalAlpha = Math.max(0, 1 - f.age / f.life);
+    ctx.font = f.cls === 'sheikh' ? `${sw(9)}px 'Press Start 2P'` : `${sw(7)}px 'Press Start 2P'`;
+    ctx.fillStyle = f.cls === 'miss' ? '#d82020' : '#f5c842';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = sw(1.5);
+    ctx.strokeText(f.text, f.x, f.y);
+    ctx.fillText(f.text, f.x, f.y);
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ─── END GAME ───
+function endGame() {
+  GS.running = false;
+  showEndScreen();
+}
+
+function showEndScreen() {
+  document.getElementById('endScreen').classList.add('active');
+  document.getElementById('endScore').textContent = GS.wealth;
+  document.getElementById('esChops').textContent = GS.logsChopped;
+  document.getElementById('esCharcoal').textContent = GS.charcoalSold;
+  document.getElementById('esSheikh').textContent = GS.sheikhsServed;
+  document.getElementById('esMissed').textContent = GS.sheikhsMissed;
+  renderLeaderboard();
+}
+
+// ─── LEADERBOARD (localStorage) ───
+const LB_KEY = 'woodhunt_sabha_lb_v2';
+
+function getLeaderboard() {
+  try { return JSON.parse(localStorage.getItem(LB_KEY) || '[]'); } catch { return []; }
+}
+function saveLeaderboard(lb) {
+  try { localStorage.setItem(LB_KEY, JSON.stringify(lb.slice(0, 20))); } catch {}
+}
+
+function addToLeaderboard(name, score, sheikhsServed) {
+  const lb = getLeaderboard();
+  lb.push({ name: name.toUpperCase().slice(0, 10), score, sheikhsServed, ts: Date.now() });
+  lb.sort((a, b) => b.score - a.score);
+  saveLeaderboard(lb);
+  return lb;
+}
+
+function renderLeaderboard(highlightName) {
+  const lb = getLeaderboard();
+  const container = document.getElementById('lbEntries');
+  if (lb.length === 0) {
+    container.innerHTML = '<div style="font-family:VT323,monospace;font-size:16px;color:#555;text-align:center;padding:8px;">No scores yet — be first!</div>';
+    return;
+  }
+  container.innerHTML = lb.slice(0, 10).map((entry, i) => {
+    const isYou = highlightName && entry.name === highlightName.toUpperCase() && entry.score === GS.wealth;
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)+'';
+    return `<div class="lb-entry ${isYou ? 'you' : ''}">
+      <span class="lb-rank">${medal}</span>
+      <span class="lb-name">${entry.name}</span>
+      <span class="lb-score">${entry.score}${entry.sheikhsServed > 0 ? ' 👑×'+entry.sheikhsServed : ''}</span>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('submitScore').addEventListener('click', () => {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) return;
+  addToLeaderboard(name, GS.wealth, GS.sheikhsServed);
+  renderLeaderboard(name);
+  document.getElementById('nameInput').disabled = true;
+  document.getElementById('submitScore').disabled = true;
+  document.getElementById('submitScore').textContent = '✓ SAVED';
+});
+
+document.getElementById('showTeaching').addEventListener('click', () => {
+  document.getElementById('endScreen').classList.remove('active');
+  document.getElementById('teachingScreen').classList.add('active');
+});
+
+document.getElementById('playAgain').addEventListener('click', () => {
+  document.getElementById('endScreen').classList.remove('active');
+  document.getElementById('nameInput').disabled = false;
+  document.getElementById('submitScore').disabled = false;
+  document.getElementById('submitScore').textContent = 'SAVE';
+  document.getElementById('nameInput').value = '';
+  startGame();
+});
+
+document.getElementById('playAgain2').addEventListener('click', () => {
+  document.getElementById('teachingScreen').classList.remove('active');
+  document.getElementById('nameInput').disabled = false;
+  document.getElementById('submitScore').disabled = false;
+  document.getElementById('submitScore').textContent = 'SAVE';
+  document.getElementById('nameInput').value = '';
+  startGame();
+});
+
+// ─── INIT ───
+drawIntroScenes();
+
+})();
+</script>
+</body>
+</html>
