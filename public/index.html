@@ -68,27 +68,31 @@ html, body { height: 100%; background: #0a0a0a; overflow: hidden; font-family: '
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
+  padding: 0 4px;
   z-index: 50;
-  gap: 4px;
+  gap: 2px;
+  overflow: hidden;
 }
 .hud-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 60px;
-  padding: 4px 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 3px;
   background: rgba(0,0,0,0.25);
   border: 1px solid rgba(200,135,74,0.3);
+  overflow: hidden;
 }
 .hud-label {
   font-size: 5px;
   color: #c8874a;
-  letter-spacing: 1.5px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
-.hud-val { font-size: 11px; color: var(--white); }
+.hud-val { font-size: clamp(8px, 2.5vw, 11px); color: var(--white); white-space: nowrap; }
 .hud-val.gold { color: var(--gold); }
 .hud-val.red { color: var(--red); animation: timerPulse 0.6s steps(2) infinite; }
 .hud-divider {
@@ -460,7 +464,7 @@ html, body { height: 100%; background: #0a0a0a; overflow: hidden; font-family: '
       <div class="hud-label">WEALTH</div>
       <div class="hud-val gold" id="hudWealth">0</div>
     </div>
-    <div class="hud-cell" style="min-width:110px;">
+    <div class="hud-cell" style="flex:2;">
       <div class="hud-label">CARRYING</div>
       <div style="display:flex;gap:5px;align-items:center;">
         <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
